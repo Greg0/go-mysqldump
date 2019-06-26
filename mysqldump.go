@@ -16,7 +16,7 @@ Register a new dumper.
 	dir: Path to the directory where the dumps will be stored.
 	format: Format to be used to name each dump file. Uses time.Time.Format (https://golang.org/pkg/time/#Time.Format). format appended with '.sql'.
 */
-func Register(db *sql.DB, dir, format string, []string structureOnlyTables, []string ignoreTables) (*Data, error) {
+func Register(db *sql.DB, dir, format string, structureOnlyTables []string, ignoreTables []string) (*Data, error) {
 	if !isDir(dir) {
 		return nil, errors.New("Invalid directory")
 	}
@@ -37,9 +37,9 @@ func Register(db *sql.DB, dir, format string, []string structureOnlyTables, []st
 	}
 
 	return &Data{
-		Out:        f,
-		Connection: db,
-		IgnoreTables: ignoreTables,
+		Out:           f,
+		Connection:    db,
+		IgnoreTables:  ignoreTables,
 		StructureOnly: structureOnlyTables,
 	}, nil
 }
