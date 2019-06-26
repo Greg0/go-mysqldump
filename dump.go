@@ -221,13 +221,19 @@ func (data *Data) getTables() ([]string, error) {
 }
 
 func (data *Data) isIgnoredTable(name string) bool {
-	pattern := "(" + strings.Join(data.IgnoreTables, ")|(") + ")"
+	pattern := ""
+	if len(data.IgnoreTables) > 0 {
+		pattern = "(" + strings.Join(data.IgnoreTables, ")|(") + ")"
+	}
 
 	return data.regexpPatternMatch(pattern, name)
 }
 
 func (data *Data) isStructureOnlyTable(name string) bool {
-	pattern := "(" + strings.Join(data.StructureOnly, ")|(") + ")"
+	pattern := ""
+	if len(data.StructureOnly) > 0 {
+		pattern = "(" + strings.Join(data.StructureOnly, ")|(") + ")"
+	}
 
 	return data.regexpPatternMatch(pattern, name)
 }
