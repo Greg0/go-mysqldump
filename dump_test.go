@@ -41,13 +41,15 @@ func TestIgnoreTablesOk(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"Tables_in_Testdb"}).
 		AddRow("Test_Table_1").
+		AddRow("Test_Table_1_log").
+		AddRow("Secret_Table").
 		AddRow("Test_Table_2")
 
 	mock.ExpectQuery("^SHOW TABLES$").WillReturnRows(rows)
 
 	data := Data{
 		Connection:   db,
-		IgnoreTables: []string{"Test_Table_1"},
+		IgnoreTables: []string{"_log$", "^Secret"},
 	}
 
 	result, err := data.getTables()
@@ -56,7 +58,32 @@ func TestIgnoreTablesOk(t *testing.T) {
 	// we make sure that all expectations were met
 	assert.NoError(t, mock.ExpectationsWereMet(), "there were unfulfilled expections")
 
-	assert.EqualValues(t, []string{"Test_Table_2"}, result)
+	assert.EqualValues(t, []string{"Test_Table_1", "Test_Table_2"}, result)
+}
+
+func TestStructureOnlyTablesOk(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err, "an error was not expected when opening a stub database connection")
+	defer db.Close()
+
+	sqlmock.NewRows([]string{"Tables_in_Testdb"}).
+		AddRow("Test_Table_1").
+		AddRow("Test_Table_1_log").
+		AddRow("Secret_Table").
+		AddRow("Test_Table_2")
+
+	data := Data{
+		Connection:    db,
+		StructureOnly: []string{"_log$", "^Secret"},
+	}
+
+	// we make sure that all expectations were met
+	assert.NoError(t, mock.ExpectationsWereMet(), "there were unfulfilled expections")
+
+	assert.False(t, data.isStructureOnlyTable("Test_Table_1"))
+	assert.True(t, data.isStructureOnlyTable("Test_Table_1_log"))
+	assert.True(t, data.isStructureOnlyTable("Secret_Table"))
+	assert.False(t, data.isStructureOnlyTable("Test_Table_2"))
 }
 
 func TestGetTablesNil(t *testing.T) {
@@ -165,6 +192,34 @@ func TestCreateTableRowValues(t *testing.T) {
 	assert.EqualValues(t, "('1','test@test.de','Test Name 1')", result)
 }
 
+func TestCreateStructureOnlyTableRowValues(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err, "an error was not expected when opening a stub database connection")
+	defer db.Close()
+
+	sqlmock.NewRows([]string{"id", "email", "name"}).
+		AddRow(1, "test@test.de", "Test Name 1").
+		AddRow(2, "test2@test.de", "Test Name 2")
+
+	data := Data{
+		Connection:    db,
+		StructureOnly: []string{"^test$"},
+	}
+
+	table, err := data.createTable("test")
+	assert.NoError(t, err)
+
+	assert.False(t, table.Next())
+
+	result := table.RowValues()
+	assert.NoError(t, table.Err)
+
+	// we make sure that all expectations were met
+	assert.NoError(t, mock.ExpectationsWereMet(), "there were unfulfilled expections")
+
+	assert.EqualValues(t, "", result)
+}
+
 func TestCreateTableValuesSteam(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err, "an error was not expected when opening a stub database connection")
@@ -186,6 +241,31 @@ func TestCreateTableValuesSteam(t *testing.T) {
 
 	s := table.Stream()
 	assert.EqualValues(t, "INSERT INTO `test` VALUES ('1','test@test.de','Test Name 1'),('2','test2@test.de','Test Name 2');", <-s)
+
+	// we make sure that all expectations were met
+	assert.NoError(t, mock.ExpectationsWereMet(), "there were unfulfilled expections")
+}
+
+func TestStructureOnlyCreateTableValuesSteam(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err, "an error was not expected when opening a stub database connection")
+	defer db.Close()
+
+	sqlmock.NewRows([]string{"id", "email", "name"}).
+		AddRow(1, "test@test.de", "Test Name 1").
+		AddRow(2, "test2@test.de", "Test Name 2")
+
+	data := Data{
+		Connection:       db,
+		MaxAllowedPacket: 4096,
+		StructureOnly:    []string{"^test$"},
+	}
+
+	table, err := data.createTable("test")
+	assert.NoError(t, err)
+
+	s := table.Stream()
+	assert.EqualValues(t, "", <-s)
 
 	// we make sure that all expectations were met
 	assert.NoError(t, mock.ExpectationsWereMet(), "there were unfulfilled expections")

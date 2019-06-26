@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"regexp"
+	"strings"
 	"text/template"
 	"time"
 )
@@ -22,6 +24,7 @@ type Data struct {
 	Out              io.Writer
 	Connection       *sql.DB
 	IgnoreTables     []string
+	StructureOnly    []string
 	MaxAllowedPacket int
 
 	headerTmpl *template.Template
@@ -218,12 +221,24 @@ func (data *Data) getTables() ([]string, error) {
 }
 
 func (data *Data) isIgnoredTable(name string) bool {
-	for _, item := range data.IgnoreTables {
-		if item == name {
-			return true
-		}
+	pattern := "(" + strings.Join(data.IgnoreTables, ")|(") + ")"
+
+	return data.regexpPatternMatch(pattern, name)
+}
+
+func (data *Data) isStructureOnlyTable(name string) bool {
+	pattern := "(" + strings.Join(data.StructureOnly, ")|(") + ")"
+
+	return data.regexpPatternMatch(pattern, name)
+}
+
+func (data *Data) regexpPatternMatch(pattern string, subject string) bool {
+	if pattern == "" {
+		return false
 	}
-	return false
+	result, _ := regexp.MatchString(pattern, subject)
+
+	return result
 }
 
 func (data *metaData) updateServerVersion(db *sql.DB) (err error) {
@@ -308,6 +323,11 @@ func (table *table) Init() (err error) {
 }
 
 func (table *table) Next() bool {
+	if table.data.isStructureOnlyTable(table.Name) {
+		table.rows = nil
+		return false
+	}
+
 	if table.rows == nil {
 		if err := table.Init(); err != nil {
 			table.Err = err
@@ -337,6 +357,10 @@ func (table *table) RowValues() string {
 
 func (table *table) RowBuffer() *bytes.Buffer {
 	var b bytes.Buffer
+	if len(table.values) == 0 {
+		b.WriteString("")
+		return &b
+	}
 	b.WriteString("(")
 
 	for key, value := range table.values {
