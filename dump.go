@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"reflect"
 	"regexp"
 	"strings"
@@ -21,6 +22,7 @@ Data struct to configure dump behavior
     IgnoreTables: Mark sensitive tables to ignore
 */
 type Data struct {
+	File             *os.File
 	Out              io.Writer
 	Connection       *sql.DB
 	IgnoreTables     []string
