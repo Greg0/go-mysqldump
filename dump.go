@@ -145,6 +145,7 @@ func (data *Data) Dump() error {
 	}
 
 	for _, name := range tables {
+		fmt.Println(name)
 		if err := data.dumpTable(name); err != nil {
 			return err
 		}
