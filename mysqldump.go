@@ -37,12 +37,12 @@ func Register(db *sql.DB, dir, format string, structureOnlyTables []string, igno
 	}
 
 	return &Data{
-		File:          f,
-		Out:           f,
-		Connection:    db,
-		IgnoreTables:  ignoreTables,
-		StructureOnly: structureOnlyTables,
-		MaxAllowedPacket: maxAllowedPacket
+		File:             f,
+		Out:              f,
+		Connection:       db,
+		IgnoreTables:     ignoreTables,
+		StructureOnly:    structureOnlyTables,
+		MaxAllowedPacket: maxAllowedPacket,
 	}, nil
 }
 
